@@ -43,21 +43,6 @@ class ParslCommandLineTool(cwltool.process.Process):
             # Initialises a Parsl job
             return ParslJob
 
-    def make_path_mapper(self, reffiles, stagedir, runtimeContext, separateDirs):
-        # type: (List[Any], Text, RuntimeContext, bool) -> PathMapper
-        return PathMapper(reffiles, runtimeContext.basedir, stagedir, separateDirs)
-
-    def updatePathmap(self, outdir, pathmap, fn):
-        # type: (Text, PathMapper, Dict) -> None
-        if "location" in fn and fn["location"] in pathmap:
-            pathmap.update(fn["location"], pathmap.mapper(fn["location"]).resolved,
-                           os.path.join(outdir, fn["basename"]),
-                           ("Writable" if fn.get("writable") else "") + fn["class"], False)
-        for sf in fn.get("secondaryFiles", []):
-            self.updatePathmap(outdir, pathmap, sf)
-        for ls in fn.get("listing", []):
-            self.updatePathmap(os.path.join(outdir, fn["basename"]), pathmap, ls)
-
     def job(self,
             job_order,         # type: Dict[Text, Text]
             output_callbacks,  # type: Callable[[Any, Any], Any]
@@ -65,19 +50,26 @@ class ParslCommandLineTool(cwltool.process.Process):
            ):
         # type: (...) -> Generator[Union[JobBase, CallbackJob], None, None]
 
-        # TODO: Here, overide the outdir, stage dir and tmp dir
-
         require_prefix = ""
         if self.metadata["cwlVersion"] == "v1.0":
             require_prefix = "http://commonwl.org/cwltool#"
 
         jobname = uniquename(runtimeContext.name or shortname(self.tool.get("id", "job")))
+        print(jobname)
+
+        # TODO: Here, overide the outdir, stage dir and tmp dir for this job
+        runtimeContext.outdir='./out_'+jobname
+        runtimeContext.tmpdir='./tmp_'+jobname
+        runtimeContext.stagedir='./stage_'+jobname
+
+
+
         builder = self._init_job(job_order, runtimeContext)
         reffiles = copy.deepcopy(builder.files)
 
+        # TODO: Use a Parsl compatible path mapper
         j = self.make_job_runner(runtimeContext)(
-            builder, builder.job, self.make_path_mapper, self.requirements,
-            self.hints, jobname)
+            builder, builder.job, None, self.requirements, self.hints, jobname)
         j.prov_obj = self.prov_obj
         j.successCodes = self.tool.get("successCodes")
         j.temporaryFailCodes = self.tool.get("temporaryFailCodes")

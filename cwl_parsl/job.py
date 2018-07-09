@@ -15,6 +15,7 @@ class ParslJob(cwltool.job.JobBase):
         print(self.outdir)
         print(self.stagedir)
         print(self.tmpdir)
+        print(self.)
 
         @App('bash', runtimeContext.dfk)
         def bash_app(stdout=self.stdout, stderr=self.stderr):
