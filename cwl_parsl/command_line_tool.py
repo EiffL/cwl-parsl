@@ -21,6 +21,11 @@ import cwltool
 from cwltool.process import (Process, UnsupportedRequirement,
                       _logger_validation_warnings, compute_checksums,
                       normalizeFilesDirs, shortname, uniquename)
+from cwltool.pathmapper import (PathMapper, adjustDirObjs, adjustFileObjs,
+                         get_listing, trim_listing, visit_class)
+from cwltool.utils import (aslist, convert_pathsep_to_unix,
+                    docker_windows_path_adjust, json_dumps, onWindows,
+                    windows_default_container_id)
 from cwltool.loghandler import _logger
 from cwltool.flatten import flatten
 from cwltool.context import (LoadingContext,  # pylint: disable=unused-import
@@ -43,6 +48,10 @@ class ParslCommandLineTool(cwltool.process.Process):
             # Initialises a Parsl job
             return ParslJob
 
+    def make_path_mapper(self, reffiles, stagedir, runtimeContext, separateDirs):
+        # type: (List[Any], Text, RuntimeContext, bool) -> PathMapper
+        return PathMapper(reffiles, runtimeContext.basedir, stagedir, separateDirs)
+
     def job(self,
             job_order,         # type: Dict[Text, Text]
             output_callbacks,  # type: Callable[[Any, Any], Any]
@@ -62,14 +71,12 @@ class ParslCommandLineTool(cwltool.process.Process):
         runtimeContext.tmpdir='./tmp_'+jobname
         runtimeContext.stagedir='./stage_'+jobname
 
-
-
         builder = self._init_job(job_order, runtimeContext)
         reffiles = copy.deepcopy(builder.files)
 
         # TODO: Use a Parsl compatible path mapper
         j = self.make_job_runner(runtimeContext)(
-            builder, builder.job, None, self.requirements, self.hints, jobname)
+            builder, builder.job, self.make_path_mapper, self.requirements, self.hints, jobname)
         j.prov_obj = self.prov_obj
         j.successCodes = self.tool.get("successCodes")
         j.temporaryFailCodes = self.tool.get("temporaryFailCodes")
@@ -77,7 +84,15 @@ class ParslCommandLineTool(cwltool.process.Process):
 
         debug = _logger.isEnabledFor(logging.DEBUG)
 
+        builder.pathmapper = self.make_path_mapper(
+            reffiles, builder.stagedir, runtimeContext, True)
         builder.requirements = j.requirements
+
+        if debug:
+            _logger.debug(u"[job %s] path mappings is %s", j.name,
+                          json_dumps({p: builder.pathmapper.mapper(p)
+                                      for p in builder.pathmapper.files()},
+                                     indent=4))
 
         if self.tool.get("stdin"):
             with SourceLine(self.tool, "stdin", validate.ValidationException, debug):
@@ -104,6 +119,8 @@ class ParslCommandLineTool(cwltool.process.Process):
         j.outdir = builder.outdir
         j.tmpdir = builder.tmpdir
         j.stagedir = builder.stagedir
+
+        normalizeFilesDirs(j.generatefiles)
 
         readers = {}  # type: Dict[Text, Any]
         muts = set()  # type: Set[Text]
