@@ -1,4 +1,5 @@
 import sys
+import os
 import cwltool
 import cwltool.main
 from cwltool.loghandler import _logger
@@ -6,12 +7,14 @@ from cwltool.context import LoadingContext, RuntimeContext
 from cwltool.flatten import flatten
 from cwltool.command_line_tool import CommandLineTool
 from cwltool.errors import WorkflowException
+from cwltool.argparser import arg_parser
 from schema_salad.validate import ValidationException
+from .shifter import ShifterCommandLineJob
+
 import concurrent
 from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED
 import parsl
 from parsl import DataFlowKernel, App
-
 from .shifter import ShifterCommandLineJob
 
 def customMakeTool(toolpath_object, loadingContext):
@@ -153,6 +156,27 @@ class ParslExecutor(cwltool.executors.JobExecutor):
             raise WorkflowException(Text(e))
 
 if __name__ == "__main__":
-    sys.exit(cwltool.main.main(sys.argv[1:],
+
+    parser = arg_parser()
+    parser.description = 'Parsl executor for Common Workflow Language'
+    parser.add_argument("--shifter",  action="store_true",
+                             default=False, help="[experimental] Use "
+                             "Shifter runtime for running containers at NERSC.")
+
+    parsed_args = parser.parse_args(sys.argv[1:])
+
+    # Trigger the argparse message if the cwl file is missing
+    # Otherwise cwltool will use the default argparser
+    if not parsed_args.workflow:
+        if os.path.isfile("CWLFile"):
+            setattr(parsed_args, "workflow", "CWLFile")
+        else:
+            _logger.error("")
+            _logger.error("CWL document required, no input file was provided")
+            parser.print_help()
+            sys.exit(1)        
+
+    sys.exit(cwltool.main.main(
+             args=parsed_args,
              executor=ParslExecutor(),
              loadingContext=LoadingContext(kwargs={'construct_tool_object':customMakeTool})))
