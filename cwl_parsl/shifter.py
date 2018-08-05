@@ -46,7 +46,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
             dockerRequirement["dockerImageId"] = dockerRequirement["dockerPull"]
 
         with found_shifter_images_lock:
-            if dockerRequirement["dockerImageId"] in found_images:
+            if dockerRequirement["dockerImageId"] in found_shifter_images:
                 return True
 
         for ln in subprocess.check_output(["shifterimg", "images"]).decode('utf-8').splitlines():
