@@ -1,6 +1,8 @@
 import sys
 import os
 from schema_salad.validate import ValidationException
+from typing import (Dict, List,  # pylint: disable=unused-import
+                    MutableMapping, Optional, cast, Text)
 import cwltool
 import cwltool.main
 from cwltool.loghandler import _logger
@@ -41,6 +43,7 @@ class ParslExecutor(cwltool.executors.JobExecutor):
             The inputs are dummy futures provided by the parent steps of the
             workflow, if there are some
             """
+
             return job.run(rc)
 
         process_run_id = None  # type: Optional[str]
@@ -78,13 +81,20 @@ class ParslExecutor(cwltool.executors.JobExecutor):
                         runtimeContext.process_run_id = process_run_id
                         runtimeContext.reference_locations = reference_locations
 
+
                     # Run the job within a Parsl App
-                    res = parsl_runner(job, runtimeContext)
+                    import pickle
+                    print(job.__class__)
+                    if issubclass(job.__class__, cwltool.job.JobBase):
+                        import dill
+                        print("Jackpot")
+                        pickle.dump(job, open('out.p', 'wb'))
+
+                    #res = parsl_runner(job, runtimeContext)
 
                     # Adds the future to the set of futures
-                    self.futures.add(res.parent)
+                    #self.futures.add(res.parent)
                 else:
-                    print(self.futures)
                     if self.futures:
                         done, notdone = concurrent.futures.wait(self.futures, return_when=FIRST_COMPLETED)
                         self.futures = notdone

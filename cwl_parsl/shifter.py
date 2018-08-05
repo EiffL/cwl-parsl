@@ -12,8 +12,6 @@ from io import open  # pylint: disable=redefined-builtin
 from typing import (Dict, List,  # pylint: disable=unused-import
                     MutableMapping, Optional, cast, Text)
 
-from schema_salad.sourceline import SourceLine
-
 from cwltool.errors import WorkflowException
 from cwltool.job import ContainerCommandLineJob
 from cwltool.pathmapper import (PathMapper,  # pylint: disable=unused-import
@@ -80,21 +78,21 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
                 _logger.info(Text(cmd))
                 subprocess.check_call(cmd, stdout=sys.stderr)
                 found = True
-            elif "dockerFile" in dockerRequirement:
-                raise WorkflowException(SourceLine(
-                    dockerRequirement, 'dockerFile').makeError(
-                    "dockerFile is not currently supported when using the "
-                    "Shifter runtime for Docker containers."))
-            elif "dockerLoad" in dockerRequirement:
-                raise WorkflowException(SourceLine(
-                    dockerRequirement, 'dockerLoad').makeError(
-                    "dockerLoad is not currently supported when using the "
-                    "Shifter runtime for Docker containers."))
-            elif "dockerImport" in dockerRequirement:
-                raise WorkflowException(SourceLine(
-                    dockerRequirement, 'dockerImport').makeError(
-                    "dockerImport is not currently supported when using the "
-                    "Shifter runtime for Docker containers."))
+            # elif "dockerFile" in dockerRequirement:
+            #     raise WorkflowException(SourceLine(
+            #         dockerRequirement, 'dockerFile').makeError(
+            #         "dockerFile is not currently supported when using the "
+            #         "Shifter runtime for Docker containers."))
+            # elif "dockerLoad" in dockerRequirement:
+            #     raise WorkflowException(SourceLine(
+            #         dockerRequirement, 'dockerLoad').makeError(
+            #         "dockerLoad is not currently supported when using the "
+            #         "Shifter runtime for Docker containers."))
+            # elif "dockerImport" in dockerRequirement:
+            #     raise WorkflowException(SourceLine(
+            #         dockerRequirement, 'dockerImport').makeError(
+            #         "dockerImport is not currently supported when using the "
+            #         "Shifter runtime for Docker containers."))
 
         if found:
             with found_shifter_images_lock:
@@ -273,11 +271,11 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
                 img_id = str(docker_req["dockerImageId"])
             elif 'dockerPull' in docker_req:
                 img_id = str(docker_req["dockerPull"])
-            else:
-                raise WorkflowException(SourceLine(docker_req).makeError(
-                    "Docker image must be specified as 'dockerImageId' or "
-                    "'dockerPull' when using user space implementations of "
-                    "Docker"))
+            # else:
+            #     raise WorkflowException(SourceLine(docker_req).makeError(
+            #         "Docker image must be specified as 'dockerImageId' or "
+            #         "'dockerPull' when using user space implementations of "
+            #         "Docker"))
         else:
             try:
                 if docker_req and runtimeContext.use_container:

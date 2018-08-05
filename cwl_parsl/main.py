@@ -58,6 +58,5 @@ if __name__ == "__main__":
 
     sys.exit(cwltool.main.main(
              args=parsed_args,
-             executor=ParslExecutor(),
              loadingContext=lc,
              runtimeContext=rc))
