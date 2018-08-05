@@ -10,7 +10,6 @@ from typing import (Dict, List,  # pylint: disable=unused-import
                     MutableMapping, Optional, cast, Text)
 
 from .command_line_tool import customMakeTool
-from .executor import ParslExecutor
 from .configs import threads_config, slurm_config
 
 if __name__ == "__main__":
