@@ -136,11 +136,12 @@ class ParslExecutor(cwltool.executors.JobExecutor):
                         runtimeContext.reference_locations = reference_locations
 
                     # Run the job within a Parsl App
-                    res = parsl_runner(job, runtimeContext)
-
+                    #res = parsl_runner(job, runtimeContext)
+                    job.run(runtimeContext)
                     # Adds the future to the set of futures
-                    self.futures.add(res.parent)
+                    #self.futures.add(res.parent)
                 else:
+                    print(self.futures)
                     if self.futures:
                         done, notdone = concurrent.futures.wait(self.futures, return_when=FIRST_COMPLETED)
                         self.futures = notdone
@@ -183,6 +184,9 @@ if __name__ == "__main__":
 
     if parsed_args.shifter:
         rc.shifter = True
+        # Change default path as /var is not accessible in shifter
+        rc.docker_outdir='/container/spool/cwl'
+        rc.docker_libdir='/container/lib/cwl'
 
     sys.exit(cwltool.main.main(
              args=parsed_args,

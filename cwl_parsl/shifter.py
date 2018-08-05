@@ -10,7 +10,7 @@ import sys
 import threading
 from io import open  # pylint: disable=redefined-builtin
 from typing import (Dict, List,  # pylint: disable=unused-import
-                    MutableMapping, Optional, Text)
+                    MutableMapping, Optional, cast, Text)
 
 from schema_salad.sourceline import SourceLine
 
@@ -19,8 +19,8 @@ from cwltool.job import ContainerCommandLineJob
 from cwltool.pathmapper import (PathMapper,  # pylint: disable=unused-import
                          ensure_writable)
 from cwltool.process import UnsupportedRequirement
-from cwltool.utils import docker_windows_path_adjust, subprocess
-from cwltool.context import RuntimeContext
+from cwltool.utils import DEFAULT_TMP_PREFIX, docker_windows_path_adjust, subprocess
+from cwltool.context import RuntimeContext, getdefault
 
 found_shifter_images = set()  # type: Set[Text]
 found_shifter_images_lock = threading.Lock()
