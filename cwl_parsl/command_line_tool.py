@@ -24,11 +24,12 @@ from cwltool.argparser import arg_parser
 from cwltool.docker import DockerCommandLineJob
 from cwltool.singularity import SingularityCommandLineJob
 from .shifter import ShifterCommandLineJob
-from cwltool.job import CommandLineJob
-from cwltool.job import needs_shell_quoting_re, _job_popen
+from cwltool.job import CommandLineJob, SHELL_COMMAND_TEMPLATE, PYTHON_RUN_SCRIPT
+from cwltool.job import needs_shell_quoting_re
+from io import IOBase, open  # pylint: disable=redefined-builtin
 
 import parsl
-from parsl.app.app import python_app
+from parsl.app.app import python_app, bash_app
 
 def customMakeTool(toolpath_object, loadingContext):
     """Factory function passed to load_tool() which creates instances of the
@@ -39,8 +40,7 @@ def customMakeTool(toolpath_object, loadingContext):
         return customCommandLineTool(toolpath_object, loadingContext)
     return cwltool.context.default_make_tool(toolpath_object, loadingContext)
 
-@python_app
-def _parsl_job(
+def _job_popen(
         commands,                  # type: List[Text]
         stdin_path,                # type: Optional[Text]
         stdout_path,               # type: Optional[Text]
@@ -50,60 +50,46 @@ def _parsl_job(
         job_dir,                   # type: Text
         job_script_contents=None,  # type: Text
         timelimit=None,            # type: int
-        name=None,                  # type: Text
-        inputs=[]
+        name=None                  # type: Text
        ):  # type: (...) -> int
-    stdin = subprocess.PIPE  # type: Union[IO[Any], int]
-    if stdin_path is not None:
-        stdin = open(stdin_path, "rb")
 
-    stdout = sys.stderr  # type: IO[Any]
-    if stdout_path is not None:
-        stdout = open(stdout_path, "wb")
+    if not job_script_contents:
+        job_script_contents = SHELL_COMMAND_TEMPLATE
 
-    stderr = sys.stderr  # type: IO[Any]
-    if stderr_path is not None:
-        stderr = open(stderr_path, "wb")
+    env_copy = {}
+    key = None  # type: Any
+    for key in env:
+        env_copy[key] = env[key]
 
-    sproc = subprocess.Popen(commands,
-                             shell=False,
-                             close_fds=not onWindows(),
-                             stdin=stdin,
-                             stdout=stdout,
-                             stderr=stderr,
-                             env=env,
-                             cwd=cwd)
+    job_description = dict(
+        commands=commands,
+        cwd=cwd,
+        env=env_copy,
+        stdout_path=stdout_path,
+        stderr_path=stderr_path,
+        stdin_path=stdin_path,
+    )
+    with open(os.path.join(job_dir, "job.json"), encoding='utf-8', mode="w") as job_file:
+        json_dump(job_description, job_file, ensure_ascii=False)
+    try:
+        job_script = os.path.join(job_dir, "run_job.bash")
+        with open(job_script, "wb") as _:
+            _.write(job_script_contents.encode('utf-8'))
+        job_run = os.path.join(job_dir, "run_job.py")
+        with open(job_run, "wb") as _:
+            _.write(PYTHON_RUN_SCRIPT.encode('utf-8'))
 
-    if sproc.stdin:
-        sproc.stdin.close()
+        @bash_app
+        def run_process(job_dir, job_script):
+            return f"cd {job_dir} && bash {job_script}"
 
-    tm = None
-    if timelimit:
-        def terminate():
-            try:
-                _logger.warn(u"[job %s] exceeded time limit of %d seconds and will be terminated", name, timelimit)
-                sproc.terminate()
-            except OSError:
-                pass
-        tm = Timer(timelimit, terminate)
-        tm.start()
+        proc = run_process(job_dir, job_script)
 
-    rcode = sproc.wait()
+        rcode = proc.result()
 
-    if tm:
-        tm.cancel()
-
-    if isinstance(stdin, IOBase):
-        stdin.close()
-
-    if stdout is not sys.stderr:
-        stdout.close()
-
-    if stderr is not sys.stderr:
-        stderr.close()
-
-    return rcode
-
+        return rcode
+    finally:
+        shutil.rmtree(job_dir)
 
 def _parsl_execute(self,
              runtime,                # type: List[Text]
@@ -169,7 +155,7 @@ def _parsl_execute(self,
             job_script_contents = builder.build_job_script(commands)
 
         print("Running my own execution layer")
-        res = _parsl_job(commands,
+        rcode = _job_popen(commands,
             stdin_path=stdin_path,
             stdout_path=stdout_path,
             stderr_path=stderr_path,
@@ -178,10 +164,7 @@ def _parsl_execute(self,
             job_dir=tempfile.mkdtemp(prefix=getdefault(runtimeContext.tmp_outdir_prefix, DEFAULT_TMP_PREFIX)),
             job_script_contents=job_script_contents,
             timelimit=self.timelimit,
-            name=self.name,
-            inputs=[])
-
-        rcode = res.result()
+            name=self.name)
 
         if self.successCodes and rcode in self.successCodes:
             processStatus = "success"
