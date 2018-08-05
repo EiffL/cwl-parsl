@@ -245,16 +245,14 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         # directory." but spec might change to designated temp directory.
         # runtime.append("--env=HOME=/tmp")
         runtime.append(u"--env=HOME=%s" % self.builder.outdir)
-
-        if runtimeContext.custom_net is not None:
-            raise UnsupportedRequirement(
-                "Shifter implementation does not support custom networking")
-        if runtimeContext.disable_net:
-            raise UnsupportedRequirement(
-                "Shifter implementation does not support custom networking")
-        if runtimeContext.record_container_id:
-            raise UnsupportedRequirement(
-                "Shifter implementation does not support recording container id")
+        # 
+        # if runtimeContext.custom_net is not None:
+        #     raise UnsupportedRequirement(
+        #         "Shifter implementation does not support custom networking")
+        #
+        # if runtimeContext.record_container_id:
+        #     raise UnsupportedRequirement(
+        #         "Shifter implementation does not support recording container id")
 
         for t, v in self.environment.items():
             runtime.append(u"--env=%s=%s" % (t, v))
