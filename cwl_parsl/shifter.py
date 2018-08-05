@@ -254,6 +254,9 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         for t, v in self.environment.items():
             runtime.append(u"--env=%s=%s" % (t, v))
 
+        # Adds flag to execute the entrypoint
+        runtime.append(u"--entrypoint")
+
         return runtime
 
     def run(self, runtimeContext):
