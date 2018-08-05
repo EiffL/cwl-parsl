@@ -16,8 +16,7 @@ slurm_config = Config(
                 nodes_per_block=1,
                 tasks_per_node=64,
                 init_blocks=1,
-                max_blocks=1,
-                launcher=SrunLauncher,
+                max_blocks=1
             )
         )
     ]
