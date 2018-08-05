@@ -78,7 +78,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
             if "dockerPull" in dockerRequirement:
                 cmd = ["shifterimg", "pull", str(dockerRequirement["dockerPull"])]
                 _logger.info(Text(cmd))
-                check_call(cmd, stdout=sys.stderr)
+                subprocess.check_call(cmd, stdout=sys.stderr)
                 found = True
             elif "dockerFile" in dockerRequirement:
                 raise WorkflowException(SourceLine(
@@ -118,8 +118,8 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         if r:
             errmsg = None
             try:
-                check_output(["shifterimg", "--help"])
-            except CalledProcessError as err:
+                subprocess.check_output(["shifterimg", "--help"])
+            except subprocess.CalledProcessError as err:
                 errmsg = "Cannot execute 'shifterimg --help' {}".format(err)
             except OSError as err:
                 errmsg = "'shifterimg' executable not found: {}".format(err)
