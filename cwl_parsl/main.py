@@ -179,7 +179,7 @@ if __name__ == "__main__":
             parser.print_help()
             sys.exit(1)
 
-    rc = RuntimeContext()
+    rc = RuntimeContext(vars(parsed_args))
     rc.shifter = False
 
     if parsed_args.shifter:
@@ -188,8 +188,11 @@ if __name__ == "__main__":
         rc.docker_outdir='/container/spool/cwl'
         rc.docker_libdir='/container/lib/cwl'
 
+    lc = LoadingContext(vars(parsed_args))
+    lc.construct_tool_object = customMakeTool
+
     sys.exit(cwltool.main.main(
-             args=parsed_args,
+             sys.argv[1:],
              executor=ParslExecutor(),
-             loadingContext=LoadingContext(kwargs={'construct_tool_object':customMakeTool}),
+             loadingContext=lc,
              runtimeContext=rc))
