@@ -185,8 +185,8 @@ if __name__ == "__main__":
     if parsed_args.shifter:
         rc.shifter = True
         # Change default path as /var is not accessible in shifter
-        rc.docker_outdir='/container/spool/cwl'
-        rc.docker_libdir='/container/lib/cwl'
+        rc.docker_outdir='/spool'
+        rc.docker_libdir='/libdir'
 
     sys.exit(cwltool.main.main(
              args=parsed_args,

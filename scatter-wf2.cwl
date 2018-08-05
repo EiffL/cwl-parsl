@@ -18,7 +18,7 @@ outputs:
 requirements:
   - class: ScatterFeatureRequirement
   - class: DockerRequirement
-    dockerImageId: eiffl/medsdm
+    dockerPull: eiffl/ceci-base
 
 steps:
   step1:
