@@ -23,7 +23,7 @@ from cwltool.docker import DockerCommandLineJob
 from cwltool.singularity import SingularityCommandLineJob
 from .shifter import ShifterCommandLineJob
 from cwltool.job import CommandLineJob
-from cwltool.job import needs_shell_quoting_re, _job_popen, job_output_lock
+from cwltool.job import needs_shell_quoting_re, _job_popen
 
 import parsl
 from parsl.app.app import python_app
@@ -208,7 +208,10 @@ def _parsl_execute(self,
                             host_outdir, p.target[len(container_outdir)+1:])
                     os.remove(host_outdir_tgt)
 
-    with job_output_lock:
+    if runtimeContext.workflow_eval_lock is None:
+        raise WorkflowException("runtimeContext.workflow_eval_lock must not be None")
+
+    with runtimeContext.workflow_eval_lock:
         self.output_callback(outputs, processStatus)
 
     if self.stagedir and os.path.exists(self.stagedir):
@@ -218,7 +221,6 @@ def _parsl_execute(self,
     if runtimeContext.rm_tmpdir:
         _logger.debug(u"[job %s] Removing temporary directory %s", self.name, self.tmpdir)
         shutil.rmtree(self.tmpdir, True)
-
 
 
 class customCommandLineTool(cwltool.command_line_tool.CommandLineTool):
