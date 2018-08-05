@@ -17,6 +17,8 @@ outputs:
 
 requirements:
   - class: ScatterFeatureRequirement
+  - class: DockerRequirement
+    dockerImageId: eiffl/medsdm
 
 steps:
   step1:

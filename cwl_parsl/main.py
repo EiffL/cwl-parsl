@@ -1,5 +1,6 @@
 import sys
 import os
+from schema_salad.validate import ValidationException
 import cwltool
 import cwltool.main
 from cwltool.loghandler import _logger
@@ -8,8 +9,10 @@ from cwltool.flatten import flatten
 from cwltool.command_line_tool import CommandLineTool
 from cwltool.errors import WorkflowException
 from cwltool.argparser import arg_parser
-from schema_salad.validate import ValidationException
+from cwltool.docker import DockerCommandLineJob
+from cwltool.singularity import SingularityCommandLineJob
 from .shifter import ShifterCommandLineJob
+from cwltool.job import CommandLineJob
 
 import concurrent
 from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED
@@ -138,7 +141,6 @@ class ParslExecutor(cwltool.executors.JobExecutor):
                     # Adds the future to the set of futures
                     self.futures.add(res.parent)
                 else:
-                    print(self.futures)
                     if self.futures:
                         done, notdone = concurrent.futures.wait(self.futures, return_when=FIRST_COMPLETED)
                         self.futures = notdone
@@ -174,9 +176,16 @@ if __name__ == "__main__":
             _logger.error("")
             _logger.error("CWL document required, no input file was provided")
             parser.print_help()
-            sys.exit(1)        
+            sys.exit(1)
+
+    rc = RuntimeContext()
+    rc.shifter = False
+
+    if parsed_args.shifter:
+        rc.shifter = True
 
     sys.exit(cwltool.main.main(
              args=parsed_args,
              executor=ParslExecutor(),
-             loadingContext=LoadingContext(kwargs={'construct_tool_object':customMakeTool})))
+             loadingContext=LoadingContext(kwargs={'construct_tool_object':customMakeTool}),
+             runtimeContext=rc))
