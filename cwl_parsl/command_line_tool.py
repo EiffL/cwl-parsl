@@ -3,6 +3,8 @@ import os
 import tempfile
 import logging
 import shutil
+
+import shellescape
 from schema_salad.validate import ValidationException
 from typing import (IO, Any, AnyStr, Callable,  # pylint: disable=unused-import
                     Dict, Iterable, List, MutableMapping, Optional, Text,
