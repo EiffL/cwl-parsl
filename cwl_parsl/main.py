@@ -12,8 +12,7 @@ from typing import (Dict, List,  # pylint: disable=unused-import
 from .command_line_tool import customMakeTool
 from .configs import threads_config, slurm_config
 
-if __name__ == "__main__":
-
+def main():
     parser = arg_parser()
     parser.description = 'Parsl executor for Common Workflow Language'
     parser.add_argument("--shifter",  action="store_true",
@@ -59,3 +58,6 @@ if __name__ == "__main__":
              args=parsed_args,
              loadingContext=lc,
              runtimeContext=rc))
+
+if __name__ == "__main__":
+    main()
