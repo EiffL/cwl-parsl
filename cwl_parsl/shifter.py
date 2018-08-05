@@ -131,7 +131,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
                     return None
 
             if self.get_image(r, pull_image, force_pull):
-                return 'docker:'+r["dockerImageId"]
+                return r["dockerImageId"]
             else:
                 if req:
                     raise WorkflowException(u"Container image {} not "
@@ -154,12 +154,12 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
                     host_outdir, vol.target[len(container_outdir)+1:])
             if vol.type in ("File", "Directory"):
                 if not vol.resolved.startswith("_:"):
-                    mounts.append(u"%s:%s:ro" % (
+                    mounts.append(u"%s:%s" % (
                         docker_windows_path_adjust(vol.resolved),
                         docker_windows_path_adjust(vol.target)))
             elif vol.type == "WritableFile":
                 if self.inplace_update:
-                    mounts.append(u"%s:%s:rw" % (
+                    mounts.append(u"%s:%s" % (
                         docker_windows_path_adjust(vol.resolved),
                         docker_windows_path_adjust(vol.target)))
                 else:
@@ -180,7 +180,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
                             "WritableDirectory.")
                 else:
                     if self.inplace_update:
-                        mounts.append(u"%s:%s:rw" % (
+                        mounts.append(u"%s:%s" % (
                             docker_windows_path_adjust(vol.resolved),
                             docker_windows_path_adjust(vol.target)))
                     else:
@@ -203,7 +203,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
                     fd, createtmp = tempfile.mkstemp(dir=self.tmpdir)
                     with os.fdopen(fd, "wb") as f:
                         f.write(contents.encode("utf-8"))
-                    mounts.append(u"%s:%s:rw" % (
+                    mounts.append(u"%s:%s" % (
                         docker_windows_path_adjust(createtmp),
                         docker_windows_path_adjust(vol.target)))
         return mounts
@@ -211,7 +211,8 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
 
     def create_runtime(self,
                        env,                        # type: MutableMapping[Text, Text]
-                       runtimeContext              # type: RuntimeContext
+                       runtimeContext,              # type: RuntimeContext
+                       img_id
                       ):
         # type: (...) -> List
         """ Returns the Shifter runtime list of commands and options."""
@@ -219,22 +220,20 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         runtime = [u"shifter"]
         mounts = []
 
-        mounts.append(u"%s:%s:rw" % (
+        mounts.append(u"%s:%s" % (
             docker_windows_path_adjust(os.path.realpath(self.outdir)),
             self.builder.outdir))
-        mounts.append(u"%s:%s:rw" % (
+        mounts.append(u"%s:%s" % (
             docker_windows_path_adjust(os.path.realpath(self.tmpdir)), "/tmp"))
 
         self.add_volumes(self.pathmapper, mounts, secret_store=runtimeContext.secret_store)
         if self.generatemapper:
             self.add_volumes(self.generatemapper, mounts, secret_store=runtimeContext.secret_store)
 
-        # if user_space_docker_cmd:
-        #     runtime = [x.replace(":ro", "") for x in runtime]
-        #     runtime = [x.replace(":rw", "") for x in runtime]
+        runtime.append(u"--image=docker:"+img_id)
 
         if len(mounts) > 0:
-            runtime.append(u"--volume="+ (';'.join(mounts)))
+            runtime.append(u"--volume="+ (u";".join(mounts)))
 
         runtime.append(u"--workdir=%s" % (
             docker_windows_path_adjust(self.builder.outdir)))
@@ -245,7 +244,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         # directory." but spec might change to designated temp directory.
         # runtime.append("--env=HOME=/tmp")
         runtime.append(u"--env=HOME=%s" % self.builder.outdir)
-        # 
+        #
         # if runtimeContext.custom_net is not None:
         #     raise UnsupportedRequirement(
         #         "Shifter implementation does not support custom networking")
@@ -257,6 +256,72 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         for t, v in self.environment.items():
             runtime.append(u"--env=%s=%s" % (t, v))
 
-        runtime.append(u"--image=")
-
         return runtime
+
+    def run(self, runtimeContext):
+        # type: (RuntimeContext) -> None
+
+        (docker_req, docker_is_req) = self.get_requirement("DockerRequirement")
+        self.prov_obj = runtimeContext.prov_obj
+        img_id = None
+        env = cast(MutableMapping[Text, Text], os.environ)
+        user_space_docker_cmd = runtimeContext.user_space_docker_cmd
+        if docker_req and user_space_docker_cmd:
+            # For user-space docker implementations, a local image name or ID
+            # takes precedence over a network pull
+            if 'dockerImageId' in docker_req:
+                img_id = str(docker_req["dockerImageId"])
+            elif 'dockerPull' in docker_req:
+                img_id = str(docker_req["dockerPull"])
+            else:
+                raise WorkflowException(SourceLine(docker_req).makeError(
+                    "Docker image must be specified as 'dockerImageId' or "
+                    "'dockerPull' when using user space implementations of "
+                    "Docker"))
+        else:
+            try:
+                if docker_req and runtimeContext.use_container:
+                    img_id = str(
+                        self.get_from_requirements(
+                            docker_req, True, runtimeContext.pull_image,
+                            getdefault(runtimeContext.force_docker_pull, False),
+                            getdefault(runtimeContext.tmp_outdir_prefix, DEFAULT_TMP_PREFIX)))
+                if img_id is None:
+                    if self.builder.find_default_container:
+                        default_container = self.builder.find_default_container()
+                        if default_container:
+                            img_id = str(default_container)
+
+                if docker_req and img_id is None and runtimeContext.use_container:
+                    raise Exception("Docker image not available")
+
+                if self.prov_obj and img_id and runtimeContext.process_run_id:
+                    # TODO: Integrate with record_container_id
+                    container_agent = self.prov_obj.document.agent(
+                        uuid.uuid4().urn,
+                        {"prov:type": PROV["SoftwareAgent"],
+                         "cwlprov:image": img_id,
+                         "prov:label": "Container execution of image %s" % img_id})
+                    # FIXME: img_id is not a sha256 id, it might just be "debian:8"
+                    #img_entity = document.entity("nih:sha-256;%s" % img_id,
+                    #                  {"prov:label": "Container image %s" % img_id} )
+                    # The image is the plan for this activity-agent association
+                    #document.wasAssociatedWith(process_run_ID, container_agent, img_entity)
+                    self.prov_obj.document.wasAssociatedWith(
+                        runtimeContext.process_run_id, container_agent)
+            except Exception as err:
+                container = "Shifter"
+                _logger.debug("%s error", container, exc_info=True)
+                if docker_is_req:
+                    raise UnsupportedRequirement(
+                        "%s is required to run this tool: %s" % (container, err))
+                else:
+                    raise WorkflowException(
+                        "{0} is not available for this tool, try "
+                        "--no-container to disable {0}, or install "
+                        "a user space Docker replacement like uDocker with "
+                        "--user-space-docker-cmd.: {1}".format(container, err))
+
+        self._setup(runtimeContext)
+        runtime = self.create_runtime(env, runtimeContext, img_id)
+        self._execute(runtime, env, runtimeContext)
