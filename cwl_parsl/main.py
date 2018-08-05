@@ -185,8 +185,9 @@ if __name__ == "__main__":
     if parsed_args.shifter:
         rc.shifter = True
         # Change default path as /var is not accessible in shifter
-        rc.docker_outdir='/spool'
-        rc.docker_libdir='/libdir'
+        rc.docker_outdir='/spooldir'
+        rc.docker_stagedir='/stagedir'
+        rc.docker_tmpdir='/tmpdir'
 
     lc = LoadingContext(vars(parsed_args))
     lc.construct_tool_object = customMakeTool
