@@ -192,7 +192,7 @@ if __name__ == "__main__":
     lc.construct_tool_object = customMakeTool
 
     sys.exit(cwltool.main.main(
-             sys.argv[1:],
+             args=parsed_args,
              executor=ParslExecutor(),
              loadingContext=lc,
              runtimeContext=rc))
