@@ -39,34 +39,71 @@ def customMakeTool(toolpath_object, loadingContext):
         return customCommandLineTool(toolpath_object, loadingContext)
     return cwltool.context.default_make_tool(toolpath_object, loadingContext)
 
-
 @python_app
-def parsl_runner(commands,
-            stdin_path,
-            stdout_path,
-            stderr_path,
-            env,
-            cwd,
-            job_dir,
-            job_script_contents,
-            timelimit,
-            name,
-            inputs):
-    """
-    The inputs are dummy futures provided by the parent steps of the
-    workflow, if there are some
-    """
-    return _job_popen(
-            commands,
-            stdin_path=stdin_path,
-            stdout_path=stdout_path,
-            stderr_path=stderr_path,
-            env=env,
-            cwd=cwd,
-            job_dir=job_dir,
-            job_script_contents=job_script_contents,
-            timelimit=timelimit,
-            name=name)
+def _parsl_job(
+        commands,                  # type: List[Text]
+        stdin_path,                # type: Optional[Text]
+        stdout_path,               # type: Optional[Text]
+        stderr_path,               # type: Optional[Text]
+        env,                       # type: MutableMapping[AnyStr, AnyStr]
+        cwd,                       # type: Text
+        job_dir,                   # type: Text
+        job_script_contents=None,  # type: Text
+        timelimit=None,            # type: int
+        name=None,                  # type: Text
+        inputs=[]
+       ):  # type: (...) -> int
+    stdin = subprocess.PIPE  # type: Union[IO[Any], int]
+    if stdin_path is not None:
+        stdin = open(stdin_path, "rb")
+
+    stdout = sys.stderr  # type: IO[Any]
+    if stdout_path is not None:
+        stdout = open(stdout_path, "wb")
+
+    stderr = sys.stderr  # type: IO[Any]
+    if stderr_path is not None:
+        stderr = open(stderr_path, "wb")
+
+    sproc = subprocess.Popen(commands,
+                             shell=False,
+                             close_fds=not onWindows(),
+                             stdin=stdin,
+                             stdout=stdout,
+                             stderr=stderr,
+                             env=env,
+                             cwd=cwd)
+
+    if sproc.stdin:
+        sproc.stdin.close()
+
+    tm = None
+    if timelimit:
+        def terminate():
+            try:
+                _logger.warn(u"[job %s] exceeded time limit of %d seconds and will be terminated", name, timelimit)
+                sproc.terminate()
+            except OSError:
+                pass
+        tm = Timer(timelimit, terminate)
+        tm.start()
+
+    rcode = sproc.wait()
+
+    if tm:
+        tm.cancel()
+
+    if isinstance(stdin, IOBase):
+        stdin.close()
+
+    if stdout is not sys.stderr:
+        stdout.close()
+
+    if stderr is not sys.stderr:
+        stderr.close()
+
+    return rcode
+
 
 def _parsl_execute(self,
              runtime,                # type: List[Text]
@@ -132,7 +169,7 @@ def _parsl_execute(self,
             job_script_contents = builder.build_job_script(commands)
 
         print("Running my own execution layer")
-        res = parsl_runner(commands,
+        res = _parsl_job(commands,
             stdin_path=stdin_path,
             stdout_path=stdout_path,
             stderr_path=stderr_path,
