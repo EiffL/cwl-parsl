@@ -41,7 +41,7 @@ def customMakeTool(toolpath_object, loadingContext):
     return cwltool.context.default_make_tool(toolpath_object, loadingContext)
 
 @bash_app
-def run_process(job_dir, job_script):
+def run_process(job_dir, job_script, stdout='stdout.txt', stderr='stderr.txt'):
     return f"cd {job_dir} && bash {job_script}"
 
 def _job_popen(
