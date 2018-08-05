@@ -38,6 +38,10 @@ def customMakeTool(toolpath_object, loadingContext):
         return customCommandLineTool(toolpath_object, loadingContext)
     return cwltool.context.default_make_tool(toolpath_object, loadingContext)
 
+@bash_app
+def run_process(job_dir, job_script):
+    return f"cd {job_dir} && bash {job_script}"
+
 def _job_popen(
         commands,                  # type: List[Text]
         stdin_path,                # type: Optional[Text]
@@ -76,10 +80,6 @@ def _job_popen(
         job_run = os.path.join(job_dir, "run_job.py")
         with open(job_run, "wb") as _:
             _.write(PYTHON_RUN_SCRIPT.encode('utf-8'))
-
-        @bash_app
-        def run_process(job_dir, job_script):
-            return f"cd {job_dir} && bash {job_script}"
 
         proc = run_process(job_dir, job_script)
 
@@ -241,7 +241,6 @@ def _parsl_execute(self,
     if runtimeContext.rm_tmpdir:
         _logger.debug(u"[job %s] Removing temporary directory %s", self.name, self.tmpdir)
         shutil.rmtree(self.tmpdir, True)
-
 
 class customCommandLineTool(cwltool.command_line_tool.CommandLineTool):
 
