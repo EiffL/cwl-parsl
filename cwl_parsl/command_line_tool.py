@@ -83,11 +83,36 @@ def _job_popen(
         with open(job_run, "wb") as _:
             _.write(PYTHON_RUN_SCRIPT.encode('utf-8'))
 
-        proc = run_process(job_dir, job_script)
+        proc = run_process(job_dir, job_script, stdout=f"{job_dir}/{name}.out", stderr=f"{job_dir}/{name}.err")
 
         rcode = proc.result()
 
         return rcode
+    except parsl.app.errors.AppFailure:
+        stdout_file = f"{job_dir}/{name}.out"
+        stderr_file = f"{job_dir}/{name}.err"
+        sys.stderr.write(f"""
+*************************************************
+Error running pipeline stage {name}.
+Standard output and error streams below.
+*************************************************
+Standard output:
+----------------
+
+""")
+        if os.path.exists(stdout_file):
+            sys.stderr.write(open(stdout_file).read())
+        else:
+            sys.stderr.write("STDOUT MISSING!\n\n")
+        sys.stderr.write(f"""
+*************************************************
+Standard error:
+----------------
+""")
+        if os.path.exists(stderr_file):
+            sys.stderr.write(open(stderr_file).read())
+        else:
+            sys.stderr.write("STDERR MISSING!\n\n")
     finally:
         shutil.rmtree(job_dir)
 
