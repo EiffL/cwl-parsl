@@ -47,8 +47,12 @@ def main():
     if parsed_args.shifter:
         rc.shifter = True
         # Change default path as /var is not accessible in shifter
+        if rc.basedir is None:
+            print("Please specify a basedir when using shifter")
+            sys.exit(1)
+        rc.tmpdir_prefix=rc.basedir+'/tmp/tmp'
         rc.docker_outdir='/spooldir'
-        rc.docker_stagedir='/stagedir'
+        rc.docker_stagedir=rc.basedir+'/stage'
         rc.docker_tmpdir='/tmpdir'
 
     lc = LoadingContext(vars(parsed_args))

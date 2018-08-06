@@ -16,7 +16,7 @@ from cwltool.errors import WorkflowException
 from cwltool.job import ContainerCommandLineJob
 from cwltool.pathmapper import (PathMapper,  # pylint: disable=unused-import
                          ensure_writable)
-from cwltool.process import UnsupportedRequirement
+from cwltool.process import UnsupportedRequirement, stageFiles
 from cwltool.utils import DEFAULT_TMP_PREFIX, docker_windows_path_adjust, subprocess
 from cwltool.context import RuntimeContext, getdefault
 
@@ -224,7 +224,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         mounts.append(u"%s:%s" % (
             docker_windows_path_adjust(os.path.realpath(self.tmpdir)), "/tmp"))
 
-        self.add_volumes(self.pathmapper, mounts, secret_store=runtimeContext.secret_store)
+        #self.add_volumes(self.pathmapper, mounts, secret_store=runtimeContext.secret_store)
         if self.generatemapper:
             self.add_volumes(self.generatemapper, mounts, secret_store=runtimeContext.secret_store)
 
@@ -324,5 +324,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
                         "--user-space-docker-cmd.: {1}".format(container, err))
 
         self._setup(runtimeContext)
+        stageFiles(self.pathmapper, ignoreWritable=True, symLink=True,
+            secret_store=runtimeContext.secret_store)
         runtime = self.create_runtime(env, runtimeContext, img_id)
         self._execute(runtime, env, runtimeContext)
