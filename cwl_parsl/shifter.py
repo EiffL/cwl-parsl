@@ -224,7 +224,6 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
         mounts.append(u"%s:%s" % (
             docker_windows_path_adjust(os.path.realpath(self.tmpdir)), "/tmp"))
 
-        #self.add_volumes(self.pathmapper, mounts, secret_store=runtimeContext.secret_store)
         if self.generatemapper:
             self.add_volumes(self.generatemapper, mounts, secret_store=runtimeContext.secret_store)
 
