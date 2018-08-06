@@ -142,7 +142,7 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
 
         host_outdir = self.outdir
         container_outdir = self.builder.outdir
-        mounts = []
+
         for src, vol in pathmapper.items():
             if not vol.staged:
                 continue
