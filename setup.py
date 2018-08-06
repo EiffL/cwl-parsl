@@ -17,9 +17,9 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.6',
     ],
-    packages=['cwl_parsl'],
+    packages=['cwlparsl'],
     entry_points={
-        'console_scripts':['cwl_parsl=cwl_parsl.main:main']
+        'console_scripts':['cwlparsl=cwlparsl.main:main']
     },
     install_requires=['parsl>0.6.0','cwltool==1.0.20180721142728']
 )
