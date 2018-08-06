@@ -2,30 +2,21 @@ import sys
 import os
 import parsl
 import cwltool
+import argparse
 import cwltool.main
 from cwltool.loghandler import _logger
 from cwltool.context import LoadingContext, RuntimeContext
-from cwltool.argparser import arg_parser
-from typing import (Dict, List,  # pylint: disable=unused-import
-                    MutableMapping, Optional, cast, Text)
-
+from .argparser import arg_parser
 from .command_line_tool import customMakeTool
 from .configs import threads_config, slurm_config
 
+
 def main():
     parser = arg_parser()
-    parser.description = 'Parsl executor for Common Workflow Language'
-    parser.add_argument("--shifter",  action="store_true",
-                             default=False, help="[experimental] Use "
-                             "Shifter runtime for running containers at NERSC.")
-
-    parser.add_argument("--parsl_config", type=Text, default="threads",
-                        help="Parsl execution site. Either threads, or slurm.")
-
     parsed_args = parser.parse_args(sys.argv[1:])
 
     # Load the requested parsl configuration
-    if parsed_args.parsl_config == 'slurm':
+    if parsed_args.parsl == 'slurm':
         parsl.load(slurm_config)
     else:
         parsl.load(threads_config)
@@ -40,17 +31,20 @@ def main():
             _logger.error("CWL document required, no input file was provided")
             parser.print_help()
             sys.exit(1)
+    elif not parsed_args.basedir:
+        _logger.error("")
+        _logger.error("Basedir is required for storing itermediate results")
+        parser.print_help()
+        sys.exit(1)
 
     rc = RuntimeContext(vars(parsed_args))
     rc.shifter = False
+    parsed_args.__dict__['parallel'] = True
 
+    rc.tmpdir_prefix = rc.basedir+'/tmp/tmp'
+    rc.tmp_outdir_prefix = rc.basedir+'/out/out' # type: Text
     if parsed_args.shifter:
         rc.shifter = True
-        # Change default path as /var is not accessible in shifter
-        if rc.basedir is None:
-            print("Please specify a basedir when using shifter")
-            sys.exit(1)
-        rc.tmpdir_prefix=rc.basedir+'/tmp/tmp'
         rc.docker_outdir='/spooldir'
         rc.docker_stagedir=rc.basedir+'/stage'
         rc.docker_tmpdir='/tmpdir'
@@ -62,6 +56,7 @@ def main():
              args=parsed_args,
              loadingContext=lc,
              runtimeContext=rc))
+
 
 if __name__ == "__main__":
     main()

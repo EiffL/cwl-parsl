@@ -106,3 +106,7 @@ venv.bak/
 
 tests/
 .kdev4/
+
+cache/
+out/
+tmp/
