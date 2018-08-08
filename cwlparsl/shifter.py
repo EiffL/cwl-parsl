@@ -47,55 +47,54 @@ class ShifterCommandLineJob(ContainerCommandLineJob):
             if dockerRequirement["dockerImageId"] in found_shifter_images:
                 return True
 
-        for ln in subprocess.check_output(["shifterimg", "images"]).decode('utf-8').splitlines():
-            try:
-                m = ln.split()
-                sp = dockerRequirement["dockerImageId"].split(":")
-                if len(sp) == 1:
-                    sp.append("latest")
-                elif len(sp) == 2:
-                    #  if sp[1] doesn't  match valid tag names, it is a part of repository
-                    if not re.match(r'[\w][\w.-]{0,127}', sp[1]):
-                        sp[0] = sp[0] + ":" + sp[1]
-                        sp[1] = "latest"
-                elif len(sp) == 3:
-                    if re.match(r'[\w][\w.-]{0,127}', sp[2]):
-                        sp[0] = sp[0] + ":" + sp[1]
-                        sp[1] = sp[2]
-                        del sp[2]
+            for ln in subprocess.check_output(["shifterimg", "images"]).decode('utf-8').splitlines():
+                try:
+                    m = ln.split()
+                    sp = dockerRequirement["dockerImageId"].split(":")
+                    if len(sp) == 1:
+                        sp.append("latest")
+                    elif len(sp) == 2:
+                        #  if sp[1] doesn't  match valid tag names, it is a part of repository
+                        if not re.match(r'[\w][\w.-]{0,127}', sp[1]):
+                            sp[0] = sp[0] + ":" + sp[1]
+                            sp[1] = "latest"
+                    elif len(sp) == 3:
+                        if re.match(r'[\w][\w.-]{0,127}', sp[2]):
+                            sp[0] = sp[0] + ":" + sp[1]
+                            sp[1] = sp[2]
+                            del sp[2]
 
-                # check for repository:tag match or image id match
-                if (m and (((sp[0]+':'+sp[1]) == m[-1]) or dockerRequirement["dockerImageId"] == m[-1])):
+                    # check for repository:tag match or image id match
+                    if (m and (((sp[0]+':'+sp[1]) == m[-1]) or dockerRequirement["dockerImageId"] == m[-1])):
+                        found = True
+                        break
+                except ValueError:
+                    pass
+
+            if (force_pull or not found) and pull_image:
+                cmd = []  # type: List[Text]
+                if "dockerPull" in dockerRequirement:
+                    cmd = ["shifterimg", "pull", str(dockerRequirement["dockerPull"])]
+                    _logger.info(Text(cmd))
+                    subprocess.check_call(cmd, stdout=sys.stderr)
                     found = True
-                    break
-            except ValueError:
-                pass
+                # elif "dockerFile" in dockerRequirement:
+                #     raise WorkflowException(SourceLine(
+                #         dockerRequirement, 'dockerFile').makeError(
+                #         "dockerFile is not currently supported when using the "
+                #         "Shifter runtime for Docker containers."))
+                # elif "dockerLoad" in dockerRequirement:
+                #     raise WorkflowException(SourceLine(
+                #         dockerRequirement, 'dockerLoad').makeError(
+                #         "dockerLoad is not currently supported when using the "
+                #         "Shifter runtime for Docker containers."))
+                # elif "dockerImport" in dockerRequirement:
+                #     raise WorkflowException(SourceLine(
+                #         dockerRequirement, 'dockerImport').makeError(
+                #         "dockerImport is not currently supported when using the "
+                #         "Shifter runtime for Docker containers."))
 
-        if (force_pull or not found) and pull_image:
-            cmd = []  # type: List[Text]
-            if "dockerPull" in dockerRequirement:
-                cmd = ["shifterimg", "pull", str(dockerRequirement["dockerPull"])]
-                _logger.info(Text(cmd))
-                subprocess.check_call(cmd, stdout=sys.stderr)
-                found = True
-            # elif "dockerFile" in dockerRequirement:
-            #     raise WorkflowException(SourceLine(
-            #         dockerRequirement, 'dockerFile').makeError(
-            #         "dockerFile is not currently supported when using the "
-            #         "Shifter runtime for Docker containers."))
-            # elif "dockerLoad" in dockerRequirement:
-            #     raise WorkflowException(SourceLine(
-            #         dockerRequirement, 'dockerLoad').makeError(
-            #         "dockerLoad is not currently supported when using the "
-            #         "Shifter runtime for Docker containers."))
-            # elif "dockerImport" in dockerRequirement:
-            #     raise WorkflowException(SourceLine(
-            #         dockerRequirement, 'dockerImport').makeError(
-            #         "dockerImport is not currently supported when using the "
-            #         "Shifter runtime for Docker containers."))
-
-        if found:
-            with found_shifter_images_lock:
+            if found:
                 found_shifter_images.add(dockerRequirement["dockerImageId"])
 
         return found
