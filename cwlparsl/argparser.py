@@ -8,7 +8,7 @@ def arg_parser():  # type: () -> argparse.ArgumentParser
         description='Parsl-based executor for Common Workflow Language.')
 
     parser.add_argument("--parsl", type=Text, default="threads",
-                        help="Parsl execution site. Either threads, or slurm.")
+                        help="Parsl execution site. Either threads, cori, or cori-debug.")
 
     parser.add_argument("--basedir", type=Text, default=os.path.abspath('.'),
                         help="path to the staging directory")

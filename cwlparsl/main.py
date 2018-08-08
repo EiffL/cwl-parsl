@@ -8,7 +8,7 @@ from cwltool.loghandler import _logger
 from cwltool.context import LoadingContext, RuntimeContext
 from .argparser import arg_parser
 from .command_line_tool import customMakeTool
-from .configs import threads_config, slurm_config
+from .configs import threads_config, cori_regular_config, cori_debug_config
 
 
 def main():
@@ -16,8 +16,10 @@ def main():
     parsed_args = parser.parse_args(sys.argv[1:])
 
     # Load the requested parsl configuration
-    if parsed_args.parsl == 'slurm':
-        parsl.load(slurm_config)
+    if parsed_args.parsl == 'cori':
+        parsl.load(cori_regular_config)
+    elif parsed_args.parsl == 'cori-debug':
+        parsl.load(cori_debug_config)
     else:
         parsl.load(threads_config)
 
