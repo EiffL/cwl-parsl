@@ -17,7 +17,7 @@ cori_debug_config = Config(
                 tasks_per_node=64,
                 init_blocks=1,
                 max_blocks=1,
-                walltime="00:30:00",
+                walltime="00:25:00",
                 overrides="#SBATCH --constraint=haswell"
             )
         )
@@ -34,8 +34,8 @@ cori_regular_config = Config(
                 tasks_per_node=64,
                 init_blocks=1,
                 max_blocks=4,
-                parallelism=0.5,
-                walltime="00:24:00",
+                parallelism=0,
+                walltime="24:00:00",
                 overrides="#SBATCH --constraint=haswell"
             )
         )
