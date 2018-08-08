@@ -30,6 +30,9 @@ from io import IOBase, open  # pylint: disable=redefined-builtin
 
 import parsl
 from parsl.app.app import python_app, bash_app
+import threading
+
+parsl_submission_lock = threading.Lock()
 
 def customMakeTool(toolpath_object, loadingContext):
     """Factory function passed to load_tool() which creates instances of the
@@ -82,8 +85,8 @@ def _job_popen(
         job_run = os.path.join(job_dir, "run_job.py")
         with open(job_run, "wb") as _:
             _.write(PYTHON_RUN_SCRIPT.encode('utf-8'))
-
-        proc = run_process(job_dir, job_script, stdout=f"{job_dir}/{name}.out", stderr=f"{job_dir}/{name}.err")
+        with parsl_submission_lock:
+            proc = run_process(job_dir, job_script, stdout=f"{job_dir}/{name}.out", stderr=f"{job_dir}/{name}.err")
 
         rcode = proc.result()
 
