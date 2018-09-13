@@ -35,7 +35,7 @@ cori_regular_config = Config(
                 init_blocks=1,
                 max_blocks=4,
                 parallelism=0,
-                walltime="24:00:00",
+                walltime="6:00:00",
                 overrides="#SBATCH --constraint=haswell"
             )
         )
