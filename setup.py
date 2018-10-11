@@ -21,5 +21,5 @@ setup(
     entry_points={
         'console_scripts':['cwlparsl=cwlparsl.main:main']
     },
-    install_requires=['parsl>0.6.0','cwltool==1.0.20180721142728']
+    install_requires=['parsl>0.6.0','cwltool==1.0.20180923172926']
 )
